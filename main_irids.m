@@ -1,19 +1,24 @@
-%% New main file that allows for paralle processing for LUR system
+%% New main file that allows for parallel processing for LUR system, for easier IRIDIS
 
 clc; clear; close all
 %rng(52); %Interesting rng for static scenario
+%% settings process
+filename = 'settings.txt';
+fileID = fopen(filename);
+data = textscan(fileID,'%f  %*[^\n]');
+fclose(fileID);
 %% Control Variables to be converted into settings.
-P = 6; %Number of Primary Users.
-S = 3; %Number of Secondary Users.
-near_dist=500; %Max distance for Secondary Users
-far_dist=3000; %Max distance for Primary Users
-PDA_included = true; %Whether to simulate PDA too
-SU_target = 1; %Target rate for Secondary Users
-bid_step = 1E-4; %Step size for CDA Auction Game
-N = 100; %Number of samples per user generation
-U = 10; %Number of different user generations per power unit.
-rng_beta = 0.8; %Power allocated to RNG C-NOMA
-direct = true; %Does the channel between BS and PU exist?
+P = data{1}(1); %Number of Primary Users.
+S = data{1}(2); %Number of Secondary Users.
+near_dist=data{1}(3); %Max distance for Secondary Users
+far_dist=data{1}(4); %Max distance for Primary Users
+PDA_included = data{1}(5); %Whether to simulate PDA too
+SU_target = data{1}(6); %Target rate for Secondary Users
+bid_step = data{1}(7); %Step size for CDA Auction Game
+N = data{1}(8); %Number of samples per user generation
+U = data{1}(9); %Number of different user generations per power unit.
+rng_beta = data{1}(10); %Power allocated to RNG C-NOMA
+direct = data{1}(11); %Does the channel between BS and PU exist?
 folderName = "transmitPower_" + int2str(P) + "P" + int2str(S) + "S";
 settings = struct("P",P,"S",S,"nd",near_dist,"fd",far_dist,...
     "bid_step",bid_step,"N",N,"U",U,"beta",rng_beta,...

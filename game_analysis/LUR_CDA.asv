@@ -1,12 +1,13 @@
-function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
+function [PU_rate,SU_rate,pairings,GA] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
     %%This function completes pairings between the PUs and SUs, until
     %%that can be achieved have been made, including their power allocation.
 
     P = s.P;
-    S = s.S;;
+    S = s.S;
     PU_rate = zeros(1,P);
     SU_rate = zeros(1,S);
     pairings = zeros(P,S);
+    GA = zeros(1,4);
     while(any(PU_coop) && any(SU_coop))
        % has_change = false;
         PU = PU_coop(1); %Takes the first free PU
@@ -34,7 +35,7 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                     continue %Skip the game if its unwinnable for new choice
                 end
                 if(s.fb==1) %General case where FB is considered
-                    [winner,power,crate]=CDA_FB(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s,p);
+                    [winner,power,crate,GA]=CDA_FB(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s,p,GA);
                 else %Special case where FB is not considered (or not known!!)
                     [winner,power,crate]=CDA_noFB(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s,p);
                 end
@@ -144,7 +145,7 @@ end
     power = 1-max_bet(PU_winner);
 end
 
-function [winner,power,SU_rate] = CDA_FB(PU1,PU2,SU,s,p)
+function [winner,power,SU_rate,GA] = CDA_FB(PU1,PU2,SU,s,p,GA)
 %AUCTION Simulates an auction between two PUs for a given SU.
 PU_players = [PU1;PU2];
 PU_count = length(PU_players);
@@ -169,7 +170,7 @@ end
 %Auction Game
    while(pairing~=true)
        for pu = 1:2
-           PU = PU_players(pu);
+           PU = 
            while(max(SU_maxrate)>SU_maxrate(pu))
                 bid_amt(pu) = bid_amt(pu) + bid_step; %Increase bid amount
                 temp_a2 = 1-bid_amt(pu);
@@ -193,10 +194,12 @@ end
                     break
                 end
            end
+           if(pairing==true)
+               break
+           end
+           GA(end+1) = []
        end
-       if(pairing==true)
-           break
-       end
+       
        %Break a stalemate if both SU rates are equal
        if(all(SU_maxrate == SU_maxrate(1)))
            bid_amt = bid_amt + bid_step;
