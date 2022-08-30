@@ -3,15 +3,15 @@
 clc; clear; close all
 %rng(52); %Interesting rng for static scenario
 %% Control Variables to be converted into settings.
-P = 6; %Number of Primary Users.
+P = 3; %Number of Primary Users.
 S = 3; %Number of Secondary Users.
 near_dist=500; %Max distance for Secondary Users
 far_dist=3000; %Max distance for Primary Users
 PDA_included = true; %Whether to simulate PDA too
 SU_target = 1; %Target rate for Secondary Users
 bid_step = 1E-4; %Step size for CDA Auction Game
-N = 100; %Number of samples per user generation
-U = 10; %Number of different user generations per power unit.
+N = 2; %Number of samples per user generation
+U = 1; %Number of different user generations per power unit.
 rng_beta = 0.8; %Power allocated to RNG C-NOMA
 direct = true; %Does the channel between BS and PU exist?
 folderName = "transmitPower_" + int2str(P) + "P" + int2str(S) + "S";
@@ -82,14 +82,14 @@ else
     s_dir = "direct_";
 end
 
-mkdir(folderName);
+mkdir("Results/"+folderName);
 
 save_name = "LUR_" + s_dir + games + int2str(P) + "P" + int2str(S) + "S.mat";
-matfile = fullfile(folderName,save_name);
-PUSE_png = fullfile(folderName,games + "PU_SE.png");
-PUSUM_png = fullfile(folderName,games + "PU_SUM_SE.png");
-SUSE_png = fullfile(folderName,games + "SU_SE.png");
-SUSUM_png = fullfile(folderName,games + "SU_SUM_SE.png");
+matfile = fullfile("Results",folderName,save_name);
+PUSE_png = fullfile("Results",folderName,games + "PU_SE.png");
+PUSUM_png = fullfile("Results",folderName,games + "PU_SUM_SE.png");
+SUSE_png = fullfile("Results",folderName,games + "SU_SE.png");
+SUSUM_png = fullfile("Results",folderName,games + "SU_SUM_SE.png");
 % PUSE_data = [PU_CDA_SE;
 save(matfile,'PU_CDA_SE','PU_RNG_SUM','PU_CDA_SUM','PU_CDA_AVG_SE','PU_CDA_AVG_SUM',...
     'SU_CDA_SUM','SU_CDA_AVG_SUM','SU_RNG_SUM','PU_NOCOOP_SUM','PU_PDA_AVG_SE',...
@@ -154,6 +154,6 @@ if settings.PDA, plot(T_pwr,SU_PDA_SUM,'Marker',shapes(5),'Color','#77AC30'),
     plot(T_pwr,SU_PDA_AVG_SUM,'Marker',shapes(6),'Color','#4DBEEE');end
 xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Secondary Users');
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','PDA with CSI',...
+legend('CDA with CSI','CDA without CSI','Random C-NOMA','PDA with CSI','PDA without CSI',...
     'location','northwest');
 saveas(gcf,SUSUM_png);

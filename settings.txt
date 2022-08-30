@@ -6,6 +6,6 @@
 1		#SU Target rate to participate
 1E-4		#Bid step for CDA Auction Game
 100		#Number of Samples per User Gen
-10		#Number of User Gens per power unit
+100		#Number of User Gens per power unit
 0.8		#Power for RNG-NOMA Beta
 1		#Direct transmission, 1 for yes, 0 for no

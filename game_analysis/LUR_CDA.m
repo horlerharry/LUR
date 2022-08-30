@@ -148,6 +148,9 @@ end
 
 function [winner,power,SU_rate,GA] = CDA_FB(PU1,PU2,SU,s,p,GA)
 %AUCTION Simulates an auction between two PUs for a given SU.
+%PU1 is the current pair of SU, PU2 is the challenger.
+%The game is defender sided due to stalemates falling to the way of the
+%first pick.
 PU_players = [PU1;PU2];
 PU_count = length(PU_players);
 SU_success = zeros(1,PU_count);

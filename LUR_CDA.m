@@ -3,7 +3,7 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
     %%that can be achieved have been made, including their power allocation.
 
     P = s.P;
-    S = s.S;;
+    S = s.S;
     PU_rate = zeros(1,P);
     SU_rate = zeros(1,S);
     pairings = zeros(P,S);
@@ -27,6 +27,7 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                 PU_set(PU).Pairing = SU;
                 SU_set(SU).Power = 1-SU_set(SU).Budget(PU^s.fb);
                 PU_set(PU).Power = 1-SU_set(SU).Power;
+                SU_set(SU).Current_rate = p.SU_target;
                 PU_coop(1) = [];
                 break
             else %Must run auction game
@@ -34,9 +35,9 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                     continue %Skip the game if its unwinnable for new choice
                 end
                 if(s.fb==1) %General case where FB is considered
-                    [winner,power,crate]=CDA_FB(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s,p);
+                    [winner,power,crate]=CDA_FB(PU_set(SU_set(SU).Pairing),PU_set(PU),SU_set(SU),s,p);
                 else %Special case where FB is not considered (or not known!!)
-                    [winner,power,crate]=CDA_noFB(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s,p);
+                    [winner,power,crate]=CDA_noFB(PU_set(SU_set(SU).Pairing),PU_set(PU),SU_set(SU),s,p);
                 end
                 %Did the challenger beat the defender?
                 if(winner~=SU_set(SU).Pairing)
@@ -150,7 +151,7 @@ PU_players = [PU1;PU2];
 PU_count = length(PU_players);
 SU_success = zeros(1,PU_count);
 bid_amt = SU.Power*ones(1,PU_count); %Starting bid is whatever has been offered before
-SU_maxrate = zeros(1,PU_count);
+SU_maxrate = [SU.Current_rate,0];
 max_bet = 1-bid_amt;
 bid_step = s.bid_step;
 pairing = false;
@@ -159,12 +160,6 @@ pairing = false;
 if(bid_amt>0.2)
     max_bet(:) = 0.8;
     pairing = true;
-end
-%Initalise SU_maxrate 
-for pu = 1:2
-    PU = PU_players(pu);
-   [SU_maxrate(pu),~] = C_NOMA(SU.Channel(PU.Number^s.fb),PU.Channel,...
-    PU.Relay_gains(SU.Number),1-bid_amt(pu),p);
 end
 %Auction Game
    while(pairing~=true)
@@ -192,6 +187,9 @@ end
                     pairing=true;
                     break
                 end
+           end
+           if(pairing==true)
+               break
            end
        end
        if(pairing==true)
