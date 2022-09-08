@@ -46,6 +46,8 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                     loser = SU_set(SU).Pairing;
                     PU_set(loser).Pairing = 0;
                     PU_set(loser).Power = 0;
+                    PU_set(loser).Pref_list(j) = [];
+                    PU_set(loser).Pref_list(end+1) = 0;
                     PU_coop(end+1) = loser;
 
                     %New matching is achieved.
@@ -54,13 +56,17 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                     SU_set(SU).Power = power;
                     %Max power function, rounding necessary due to MATLAB's
                     %data precision.
-                    if(round(power,4)>=0.2) %Max power
+                    if(crate >= max(SU_set(SU).Maxrates)) %Max power
                         SU_coop(SU_coop==SU) = [];
                     end
                     PU_set(PU).Power = 1-power;
                     PU_coop(1) = [];
                     SU_set(SU).Current_rate = crate;
                     break
+                else
+                    SU_set(SU).Power = power;
+                    PU_set(SU_set(SU).Pairing).Power = 1-power;
+                    SU_set(SU).Current_rate = crate;
                 end
             end
         end
@@ -147,20 +153,31 @@ end
 
 function [winner,power,SU_rate] = CDA_FB(PU1,PU2,SU,s,p)
 %AUCTION Simulates an auction between two PUs for a given SU.
+%PU1 is the current pair of SU, PU2 is the challenger.
+%The game is defender sided due to stalemates falling to the way of the
+%first pick.
 PU_players = [PU1;PU2];
 PU_count = length(PU_players);
-SU_success = zeros(1,PU_count);
 bid_amt = SU.Power*ones(1,PU_count); %Starting bid is whatever has been offered before
-SU_maxrate = [SU.Current_rate,0];
-max_bet = 1-bid_amt;
+SU_maxrate = [SU.Current_rate,0]; %SU maxrate, first user has already paired
+max_bet = [1-bid_amt,0];
+PU_minrate = [PU1.Current_rate,PU2.Current_rate]; %PU minrate, either the direct or another relay
 bid_step = s.bid_step;
 pairing = false;
 
-%Pre-check to see if power has overcapped
-if(bid_amt>0.2)
-    max_bet(:) = 0.8;
-    pairing = true;
+%Load comparisons
+for pu = 1:2
+    PU = PU_players(pu);
+    su_loc = find(PU.Pref_list==SU.Number);
+    if(su_loc+1<s.S) %There's another SU to choose from
+       if(PU.Pref_list(su_loc+1) ~= 0)
+        %Takes the max of either direct or alternative SU-PU pairings
+        PU_minrate(pu) = max(PU.Current_rate,PU.Maxrates(PU.Pref_list(su_loc+1)));
+       end
+    end
 end
+
+
 %Auction Game
    while(pairing~=true)
        for pu = 1:2
@@ -168,22 +185,14 @@ end
            while(max(SU_maxrate)>SU_maxrate(pu))
                 bid_amt(pu) = bid_amt(pu) + bid_step; %Increase bid amount
                 temp_a2 = 1-bid_amt(pu);
-                if bid_amt(pu) > 0.2
-%                     SU_maxrate(pu) = 0;
-                    pairing=true;
-                    break
-                end
                 [R1,R2] = C_NOMA(SU.Channel(PU.Number^s.fb),PU.Channel,...
                     PU.Relay_gains(SU.Number),temp_a2,p);
-                if(R2 > PU.Current_rate) %User 2 throughtput
-                    if(R1>p.SU_target) %User 1 throughput
-                        %SU_success(pu) = 1; %Yes
-                        SU_maxrate(pu) = R1;
+                if(R2 > PU_minrate(pu) ) %PU throughtput
+                     if(R1>p.SU_target) %SU throughput
+                         SU_maxrate(pu) = R1;
                         max_bet(pu) = temp_a2;
                     end
                 else
-
-                    %SU_success(pu) = 0; %No
                     pairing=true;
                     break
                 end
@@ -217,8 +226,5 @@ end
    [SU_rate,PU_winner] = max(SU_maxrate);
     winner = PU_players(PU_winner).Number;
     power = 1-max_bet(PU_winner);
-    if(power>0.2) %Catch clause incase I missed anything
-        error('Power value has overcapped');
-    end
 end
 
