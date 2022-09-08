@@ -4,9 +4,9 @@ function [PU_rate,SU_rate,pairings] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
 %% Output variables
 P = s.P;
 S = s.S;
-PU_rate = zeros(1,P);
-SU_rate = zeros(1,S);
-pairings = zeros(P,S);
+PU_rate = zeros(1,P); %Final rates of each PU
+SU_rate = zeros(1,S); %Final rates of each SU
+
 
 %% Initialise rounds for PDA
 if(any(PU_coop) && any(SU_coop))
@@ -17,7 +17,7 @@ else
     max_pairings = 0;
     PU_coop = 1;
 end
-
+pairings = zeros(P,rounds); %Round by round pairings
 %Needed to reset pairings for rounds
 SU_reset = num2cell(zeros(1,S));
 PU_reset = num2cell(zeros(1,P));
@@ -39,7 +39,7 @@ for r = 1:rounds
                 if(SU_set(SU).Pairing == 0) %No PU paired with this SU
                     SU_set(SU).Pairing = PU_set(PU).Number;
                     PU_set(PU).Pairing = SU_set(SU).Number;
-                    PU_set(PU).Power = SU_set(SU).Budget(PU);
+                    PU_set(PU).Power = SU_set(SU).Budget(PU^s.fb);
                     break
                 else
                     %SU already has a relay buddy
@@ -61,9 +61,9 @@ for r = 1:rounds
             SU = SU_set(PU.Pairing);
             [SU_round,PU_round] = C_NOMA(SU.Channel(pu^s.fb),PU.Channel,...
                 PU.Relay_gains(PU.Pairing),PU.Power,p);
-            pairings(pu,PU.Pairing) = 1;
+            pairings(pu,r) = PU.Pairing;
             SU_rate(SU.Number) = SU_rate(SU.Number) + SU_round;
-            end
+        end
         PU_rate(pu) = PU_rate(pu) + PU_round;
     end
         %Update order of PUs for PDA fairness

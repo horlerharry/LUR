@@ -21,21 +21,18 @@ function [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p)
     PU_nonoma = num2cell(PUrate_nonoma); [PU_set.Current_rate]=PU_nonoma{:};
     SU_budget = num2cell(1-a1_star,2); [SU_set.Budget]=SU_budget{:};
     %% Generate preference lists
-    [user_list,PU_budget,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_set,s,p);
-    PU_b = num2cell(PU_budget,2); [PU_set.Budget]=PU_b{:};
+    [user_list,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_set,s,p);
+    PU_m = num2cell(PU_maxrate,2); [PU_set.Maxrates]=PU_m{:};
     SU_m = num2cell(SU_maxrate,2); [SU_set.Maxrates] = SU_m{:};
-    
     %Preference lists are order based on the users that can provide them
     %the greatest throughput
-    [~,PU_preflist] = sort(PU_maxrate,2,'descend');
+    [PU_om,PU_preflist] = sort(PU_maxrate,2,'descend');
     [~,SU_preflist] = sort(SU_maxrate,2,'descend');
-    
-%     for pu = 1:P %%wtf does this do now
-%         user_list(pu,:) = user_list(pu,PU_preflist(pu,:));
-%     end
+
+    %Remove any preferences where PU_maxrate = 0 (i.e. not a pair)
+    PU_preflist(PU_om==0) = 0;
     %Removes any SUs from PUpref that would not match (i.e. the SU could
     %not be supported)
-    PU_preflist = PU_preflist .* user_list;
     PU_prefs = num2cell(PU_preflist,2); [PU_set.Pref_list]=PU_prefs{:};
     SU_prefs = num2cell(SU_preflist,2); [SU_set.Pref_list]=SU_prefs{:};
     %% Determine players of games
@@ -53,7 +50,7 @@ function [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p)
     end
 end
 
-function [user_list,PU_budget,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_set,s,p)
+function [user_list,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_set,s,p)
 %% Generate possible pairings
 % user_list(PxS) containing whether a PU-SU pairing is possible
 % PU_budget(PxS) contains the max power allocation for a given SU
@@ -63,7 +60,6 @@ function [user_list,PU_budget,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_s
     P = s.P;
     S = s.S;
     a_list = 0.8:0.0001:0.9999;
-    PU_budget = zeros(P,S);
     user_list = zeros(P,S);
     PU_maxrate = zeros(P,S);
     SU_maxrate = zeros(S,P);
@@ -91,8 +87,6 @@ function [user_list,PU_budget,PU_maxrate,SU_maxrate] = support_check(PU_set,SU_s
                    break
                 end
             end
-            %PU_budget is simply the inverse of the threshold found.
-            PU_budget(pu,su) = 1-a_list(a);
             %User list is checked to make sure SU is happy to coop with
             %that power value
             user_list(pu,su) = a_list(a)<SU.Budget(pu^s.fb);
