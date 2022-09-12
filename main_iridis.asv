@@ -39,10 +39,8 @@ else
 end
 if(~direct)
     s_dir = "nodirect_";
-    disp("No direct transmission")
 else
     s_dir = "direct_";
-    disp("Direct transmission enabled");
 end
 settings.Olen = out_len;
 outputs = cell(1,xlen);
@@ -87,7 +85,11 @@ SU_CDA_AVG_SUM = sum(SU_CDA_AVG_SE);
 SU_RNG_SUM = sum(SU_RNG_SE);
 
 %% Folder management and data saving
-
+if(~direct)
+    s_dir = "nodirect_";
+else
+    s_dir = "direct_";
+end
 folderName = "tpwr_"+s_dir + int2str(P) + "P" + int2str(S) + "S_";
 
 mkdir("Results/"+folderName);
@@ -102,8 +104,7 @@ SUSUM_png = fullfile("Results",folderName,games + "SU_SUM_SE.png");
 % PUSE_data = [PU_CDA_SE;
 save(matfile,'PU_CDA_SE','PU_RNG_SUM','PU_CDA_SUM','PU_CDA_AVG_SE','PU_CDA_AVG_SUM',...
     'SU_CDA_SUM','SU_CDA_AVG_SUM','SU_RNG_SUM','PU_NOCOOP_SUM','PU_PDA_AVG_SE',...
-    'PU_PDA_AVG_SUM','SU_PDA_AVG_SE','SU_PDA_AVG_SUM','PU_PDA_SE','PU_PDA_SUM',...
-    'SU_PDA_SE','SU_PDA_SUM','-v7.3');
+    'PU_PDA_AVG_SUM','SU_PDA_AVG_SE','SU_PDA_AVG_SUM','-v7.3');
 
 %% Plotting
 shapes = ['o','x','s','d','^','p','h','*'];

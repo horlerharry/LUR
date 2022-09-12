@@ -3,15 +3,15 @@
 clc; clear; close all
 %rng(52); %Interesting rng for static scenario
 %% Control Variables to be converted into settings.
-P = 3; %Number of Primary Users.
-S = 3; %Number of Secondary Users.
+P = 6; %Number of Primary Users.
+S = 4; %Number of Secondary Users.
 near_dist=500; %Max distance for Secondary Users
 far_dist=3000; %Max distance for Primary Users
 PDA_included = true; %Whether to simulate PDA too
 SU_target = 1; %Target rate for Secondary Users
 bid_step = 1E-4; %Step size for CDA Auction Game
-N = 2; %Number of samples per user generation
-U = 1; %Number of different user generations per power unit.
+N = 10; %Number of samples per user generation
+U = 10; %Number of different user generations per power unit.
 rng_beta = 0.8; %Power allocated to RNG C-NOMA
 direct = true; %Does the channel between BS and PU exist?
 folderName = "transmitPower_" + int2str(P) + "P" + int2str(S) + "S";

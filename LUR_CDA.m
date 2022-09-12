@@ -105,14 +105,21 @@ PU_count = length(PU_players);
 SU_success = zeros(1,PU_count);
 bid_amt = SU.Power; %Starting bid is whatever has been offered before
 SU_maxrate = zeros(1,PU_count);
+PU_minrate = [PU1.Current_rate,PU2.Current_rate]; %PU minrate, either the direct or another relay
 max_bet = 1-bid_amt;
 bid_step = s.bid_step;
 pairing = false;
 
-%Pre-check to see if power has overcapped
-if(bid_amt>0.2)
-    max_bet(:) = 0.8;
-    pairing = true;
+%Load comparisons
+for pu = 1:2
+    PU = PU_players(pu);
+    su_loc = find(PU.Pref_list==SU.Number);
+    if(su_loc<s.S) %There's another SU to choose from
+       if(PU.Pref_list(su_loc+1) ~= 0)
+        %Takes the max of either direct or alternative SU-PU pairings
+        PU_minrate(pu) = max(PU.Current_rate,PU.Maxrates(PU.Pref_list(su_loc+1)));
+       end
+    end
 end
 
 %Auction Game
@@ -130,7 +137,7 @@ end
             %Run R_1, R_2 to fulfil the requirements
             [R1,R2] = C_NOMA(SU.Channel,PU.Channel,...
                     PU.Relay_gains(SU.Number),temp_a2,p);
-            if(R2 > PU.Current_rate) %User 2 throughtput
+            if(R2 > PU_minrate(pu)) %User 2 throughtput
                 if(R1>p.SU_target) %User 1 throughput
                     SU_success(pu) = 1; %Yes
                     SU_maxrate(pu) = R1;
@@ -169,7 +176,7 @@ pairing = false;
 for pu = 1:2
     PU = PU_players(pu);
     su_loc = find(PU.Pref_list==SU.Number);
-    if(su_loc+1<s.S) %There's another SU to choose from
+    if(su_loc<s.S) %There's another SU to choose from
        if(PU.Pref_list(su_loc+1) ~= 0)
         %Takes the max of either direct or alternative SU-PU pairings
         PU_minrate(pu) = max(PU.Current_rate,PU.Maxrates(PU.Pref_list(su_loc+1)));

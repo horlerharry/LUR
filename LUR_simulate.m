@@ -28,6 +28,7 @@ function outputs = LUR_simulate(tb,s,p)
     PU_PDA_AVG_SE = zeros(1,P); SU_PDA_AVG_SE = zeros(1,S);
     PU_RNG_SE = zeros(1,P); SU_RNG_SE = zeros(1,S);
     PU_NOCOOP_SE = zeros(1,P);
+    PU_direct = zeros(1,P);
     %% Main loop
     for u = 1:U
         %Generate users and channels
