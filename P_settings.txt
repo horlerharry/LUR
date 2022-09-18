@@ -1,0 +1,13 @@
+20 		#Max Number of Primary Users
+2       #Increment for Primary Users
+4       #Min Number of Primary Users
+3		#Secondary Users
+500		#Max SU distance
+3000	#Max PU distance
+1		#PDA included, 1 for yes, 0 for no
+1		#SU Target rate to participate
+1E-4	#Bid step for CDA Auction Game
+10		#Number of Samples per User Gen
+10		#Number of User Gens per power unit
+0.8		#Power for RNG-NOMA Beta
+2		#Direct transmission, 2 for strong, 1 for weak, 0 for none
