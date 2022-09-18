@@ -13,10 +13,10 @@ function [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p)
     %Remove any values over 1 as 1 is the maximum allocation
     a1_star(a1_star>1) = 1;
     %Direct transmission from BS to PU
-    if(p.dr)
-        PUrate_nonoma = log2(1+(p.pb.*cell2mat({PU_set.Channel}))./p.no);
-    else
+    if(~p.dr)
         PUrate_nonoma = zeros(1,P);
+    else
+        PUrate_nonoma = (p.dr/2)*log2(1+(p.pb.*cell2mat({PU_set.Channel}))./p.no);
     end
     PU_nonoma = num2cell(PUrate_nonoma); [PU_set.Current_rate]=PU_nonoma{:};
     SU_budget = num2cell(1-a1_star,2); [SU_set.Budget]=SU_budget{:};
@@ -38,7 +38,7 @@ function [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p)
     %% Determine players of games
     
     %Find cooperators based on user_list, where a row refers to a PU and
-    %col refers to a SU. Remove any empty non-players too.
+    %column refers to a SU. Remove any empty non-players too.
     PU_coop = any(user_list,2) .* [1:P].';
     SU_coop = any(user_list) .* [1:S];
     PU_coop(PU_coop==0) = [];

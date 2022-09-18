@@ -13,9 +13,9 @@ function outputs = LUR_simulate(tb,s,p)
     if(strcmp(s.xValue,'power'))
         p.pb = 10^(p.T_pwr(tb)/10);
     elseif(strcmp(s.xValue,'maxP'))
-        s.P = tb;
+        s.P = p.P_values(tb);
     elseif(strcmp(s.xValue,'maxS'))
-        s.S = tb;
+        s.S = p.S_values(tb);
     end
 
     
@@ -69,8 +69,8 @@ function outputs = LUR_simulate(tb,s,p)
         s.fb = 0;
         rounds = 0;
         
-        if(p.dr) %Direct transmission from BS to PU
-            PU_direct = mean(log2(1+(p.pb.*PU_channels)/p.no));
+        if(p.dr~=0) %Direct transmission from BS to PU
+            PU_direct = (p.dr/2)*mean(log2(1+(p.pb.*PU_channels)/p.no));
             PU_NOCOOP_SE = PU_NOCOOP_SE + PU_direct;
         end
 
@@ -96,16 +96,20 @@ function outputs = LUR_simulate(tb,s,p)
                 PU_CDA_AVG(pu) = PU_direct(pu);
             else
                 cda_relay = reshape(SU_PU_channels(pu,cda_su,:),N,1);
-                cda_SU = reshape(SU_channels(cda_su,pu,:),N,1);
-                [SU_CDA_AVG(cda_su),PU_CDA_AVG(pu)] = C_NOMA(cda_SU,...
+                cda_SU_ch = reshape(SU_channels(cda_su,pu,:),N,1);
+                [CDA_SU,CDA_PU] = C_NOMA(cda_SU_ch,...
                     PU_channels(:,pu),cda_relay,power,p);
+                SU_CDA_AVG(cda_su) = mean(CDA_SU);
+                PU_CDA_AVG(pu) = mean(CDA_PU);
             end
             %Random C-NOMA transmission
             if(pu<=S) %For uneven situations.
                 rng_relay = reshape(SU_PU_channels(pu,pu,:),N,1);
                 rng_second = reshape(SU_channels(pu,pu,:),N,1);
-                [SU_RNG(pu),PU_RNG(pu)] = C_NOMA(rng_second,PU_channels(:,pu)...
+                [RNG_SU,RNG_PU] = C_NOMA(rng_second,PU_channels(:,pu)...
                     ,rng_relay,s.beta,p);
+                SU_RNG(pu) = mean(RNG_SU);
+                PU_RNG(pu) = mean(RNG_PU);
             end
               %PDA NO CSI
             for r = 1:rounds
@@ -117,8 +121,8 @@ function outputs = LUR_simulate(tb,s,p)
                     pda_SU = reshape(SU_channels(SU,pu,:),N,1);
                     [PDA_SU,PDA_PU] = C_NOMA(pda_SU,...
                         PU_channels(:,pu),pda_relay,SU_set(SU).Budget(pu^s.fb),p);
-                    PU_PDA_AVG(pu) = PU_PDA_AVG(pu) + PDA_PU;
-                    SU_PDA_AVG(SU) = SU_PDA_AVG(SU) + PDA_SU;
+                    PU_PDA_AVG(pu) = PU_PDA_AVG(pu) + mean(PDA_PU);
+                    SU_PDA_AVG(SU) = SU_PDA_AVG(SU) + mean(PDA_SU);
                 end
 
             end
