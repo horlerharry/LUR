@@ -28,7 +28,7 @@ function outputs = LUR_simulate(tb,s,p)
     PU_PDA_AVG_SE = zeros(1,P); SU_PDA_AVG_SE = zeros(1,S);
     PU_RNG_SE = zeros(1,P); SU_RNG_SE = zeros(1,S);
     PU_NOCOOP_SE = zeros(1,P);
-    PU_direct = zeros(1,P);
+    PU_direct = zeros(1,P); PU_CA_SE = 0;
     %% Main loop
     for u = 1:U
         %Generate users and channels
@@ -57,9 +57,10 @@ function outputs = LUR_simulate(tb,s,p)
             PU_CDA_SE = PU_CDA_SE + CDA_PUrate;
             SU_CDA_SE = SU_CDA_SE + CDA_SUrate;
             if(s.PDA)
-                [PDA_PUrate,PDA_SUrate,~] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
+                [PDA_PUrate,PDA_SUrate,~,PU_CArate] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
                 PU_PDA_SE = PU_PDA_SE + PDA_PUrate;
                 SU_PDA_SE = SU_PDA_SE + PDA_SUrate;
+                PU_CA_SE = PU_CA_SE + PU_CArate;
             end
         end
         %Reset channels to Path loss
@@ -154,6 +155,7 @@ function outputs = LUR_simulate(tb,s,p)
         outputs{9} = SU_PDA_SE/N;
         outputs{10} = PU_PDA_AVG_SE;
         outputs{11} = SU_PDA_AVG_SE;
+        outputs{12} = PU_CA_SE/N;
     end
 
     %Final manipulation

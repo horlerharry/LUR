@@ -8,4 +8,4 @@
 10		#Number of Samples per User Gen
 10		#Number of User Gens per power unit
 0.8		#Power for RNG-NOMA Beta
-1		#Direct transmission, 2 for strong, 1 for weak, 0 for none
+2		#Direct transmission, 2 for strong, 1 for weak, 0 for none

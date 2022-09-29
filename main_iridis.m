@@ -33,7 +33,7 @@ pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target',SU_tar
 %% Output Variables
 xlen = length(T_pwr);
 if(settings.PDA)
-    out_len = 11;
+    out_len = 12;
 else
     out_len = 7;
 end
@@ -74,6 +74,7 @@ if(settings.PDA)
     SU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(9),outputs)),[S,xlen]);
     PU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(10),outputs)),[P,xlen]);
     SU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(11),outputs)), [S,xlen]);
+    PU_CA_SUM = cell2mat(cellfun(@(x) x(12), outputs));
     games = "CDA&PDA_";
 end
 %% Summing data
@@ -149,11 +150,13 @@ plot(T_pwr,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
 plot(T_pwr,PU_RNG_SUM,'Marker',shapes(2),'Color',colours(9)); 
 plot(T_pwr,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(4));
 if settings.PDA, plot(T_pwr,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)),
-    plot(T_pwr,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)), end
+    plot(T_pwr,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)),
+    %plot(T_pwr,PU_CA_SUM,'Marker',shapes(6),'Color',colours(7)), 
+end
 xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Primary Users');
 legend('CDA with CSI','CDA without CSI','Random C-NOMA','Direct transmission','PDA with CSI','PDA without CSI',...
-    'location','northwest');
+    'location','best');
 h = get(gca,'Children');
 set(gca,'Children',[h(4),h(3),h(5),h(1),h(6),h(2)]);
 ylim([0 inf]);
@@ -191,7 +194,7 @@ if settings.PDA, plot(T_pwr,SU_PDA_SUM,'Marker',shapes(3),'Color',colours(3));
 xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Secondary Users');
 legend('CDA with CSI','CDA without CSI','Random C-NOMA','PDA with CSI','PDA without CSI',...
-    'location','northwest');
+    'location','best');
 h = get(gca,'Children');
 set(gca,'Children',[h(3),h(4),h(1),h(5),h(2)]);
 ylim([0 inf]);
