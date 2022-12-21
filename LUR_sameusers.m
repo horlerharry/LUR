@@ -1,4 +1,4 @@
-function outputs = LUR_simulate(tb,s,p)
+function outputs = LUR_sameusers(tb,s,p)
 %Main body for simulating the LUR system
 %   Here is the main file for housing all the work to simulate LUR.
 %   The structure of this code allows for additional systems to be tested
@@ -12,10 +12,13 @@ function outputs = LUR_simulate(tb,s,p)
     %supporting one changing value, but more could be investigated.
     if(strcmp(s.xValue,'power'))
         p.pb = 10^(p.T_pwr(tb)/10);
+        maxS = s.S;
     elseif(strcmp(s.xValue,'maxP'))
         s.P = p.P_values(tb);
+        maxS = s.S;
     elseif(strcmp(s.xValue,'maxS'))
         s.S = p.S_values(tb);
+        maxS = max(p.S_values);
     end
 
     
@@ -32,17 +35,19 @@ function outputs = LUR_simulate(tb,s,p)
     PU_direct = zeros(1,P); PU_CA_SE = 0;
     %% Main loop
     for u = 1:U
-        %Generate users and channels
-        [PU_set,SU_set] = user_gen(s);
+        %Generate channels
+        PU_set = p.allPUs{u}(1:P); SU_set = p.allSUs{u}(1:S);
         secondary_c = abs((randn(S,N*P)+1i*randn(S,N*P))/sqrt(2)).^2;
+        relay_channels = abs((randn(P,N*S)+1i*randn(P,S*N))/sqrt(2)).^2;
+
         SU_channels = reshape(secondary_c,[S,P,N]);
         PU_channels = abs((randn(N,P)+1i*randn(N,P))/sqrt(2)).^2;
-        relay_channels = abs((randn(P,N*S)+1i*randn(P,S*N))/sqrt(2)).^2;
         SU_PU_channels = reshape(relay_channels,[P,S,N]);
-        
+        Relay_Pathloss = reshape(cell2mat({PU_set.Relay_PL}),[P,maxS]);
+        Relay_Pathloss = Relay_Pathloss(:,1:S);
         SU_channels = SU_channels .* cell2mat({SU_set.Path_loss}).';
         PU_channels = PU_channels .* cell2mat({PU_set.Path_loss});
-        SU_PU_channels = SU_PU_channels .* reshape(cell2mat({PU_set.Relay_PL}),[S,P]).';
+        SU_PU_channels = SU_PU_channels .* Relay_Pathloss;
         for n = 1:N
             %Channel assignment
             h_SU = num2cell(SU_channels(:,:,n),2); 
@@ -82,28 +87,32 @@ function outputs = LUR_simulate(tb,s,p)
         %Run LUR for just path loss
         [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p);
         [~,~,CDA_pairs] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
+        [~,~,DMA_pairs] = LUR_DMA(PU_set,SU_set,PU_coop,SU_coop,s,p);
         if(s.PDA)
             [~,~,PDA_pairs] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
             rounds = size(PDA_pairs,2);
         end
         PU_CDA_AVG = zeros(1,P); SU_CDA_AVG = zeros(1,S);
         PU_PDA_AVG = zeros(1,P); SU_PDA_AVG = zeros(1,S);
+        PU_DMA_AVG = zeros(1,P); SU_DMA_AVG = zeros(1,S);
         PU_RNG = zeros(1,P); SU_RNG= zeros(1,S);
         for pu = 1:P
-            %CDA NO CSI
+           
             cda_su = find(CDA_pairs(pu,:));
+            dma_su = find(DMA_pairs(pu,:));
             pda_su = PDA_pairs(pu,:);
-            power = CDA_pairs(pu,cda_su);        
+            cda_beta = CDA_pairs(pu,cda_su);        
+            dma_beta = DMA_pairs(pu,dma_su);
 
-          
-            if(isempty(power))
+           %CDA NO CSI
+            if(isempty(cda_beta))
                 %i.e. No cooperation
                 PU_CDA_AVG(pu) = PU_direct(pu);
             else
                 cda_relay = reshape(SU_PU_channels(pu,cda_su,:),N,1);
                 cda_SU_ch = reshape(SU_channels(cda_su,pu,:),N,1);
                 [CDA_SU,CDA_PU] = C_NOMA(cda_SU_ch,...
-                    PU_channels(:,pu),cda_relay,power,p);
+                    PU_channels(:,pu),cda_relay,cda_beta,p);
                 SU_CDA_AVG(cda_su) = mean(CDA_SU);
                 PU_CDA_AVG(pu) = mean(CDA_PU);
             end
@@ -131,6 +140,18 @@ function outputs = LUR_simulate(tb,s,p)
                 end
 
             end
+            %DMA NO CSI
+            if(isempty(dma_beta))
+                %i.e. No cooperation
+                PU_DMA_AVG(pu) = PU_direct(pu);
+            else
+                dma_relay = reshape(SU_PU_channels(pu,dma_su,:),N,1);
+                dma_su_ch = reshape(SU_channels(dma_su,pu,:),N,1);
+                [DMA_SU,DMA_PU] = C_NOMA(dma_su_ch,...
+                    PU_channels(:,pu),dma_relay,dma_beta,p);
+                SU_DMA_AVG(cda_su) = mean(DMA_SU);
+                PU_DMA_AVG(pu) = mean(DMA_PU);
+            end
         end
         
         %Outputs and reset fb setting
@@ -138,6 +159,8 @@ function outputs = LUR_simulate(tb,s,p)
         SU_CDA_AVG_SE = SU_CDA_AVG_SE + SU_CDA_AVG;
         PU_PDA_AVG_SE = PU_PDA_AVG_SE + PU_PDA_AVG/rounds;
         SU_PDA_AVG_SE = SU_PDA_AVG_SE + SU_PDA_AVG/rounds;
+        PU_DMA_AVG_SE = PU_DMA_AVG_SE + PU_DMA_AVG;
+        SU_DMA_AVG_SE = SU_DMA_AVG_SE + SU_DMA_AVG;
         PU_RNG_SE = PU_RNG_SE + PU_RNG;
         SU_RNG_SE = SU_RNG_SE + SU_RNG;
         s.fb = 1;
@@ -163,6 +186,8 @@ function outputs = LUR_simulate(tb,s,p)
     end
     outputs{13} = PU_DMA_SE/N;
     outputs{14} = SU_DMA_SE/N;
+    outputs{15} = PU_DMA_AVG_SE/N;
+    outputs{16} = PU_DMA_AVG_SE/N;
 
     %Final manipulation
     outputs = cellfun(@(x) x./U, outputs,'UniformOutput',0);

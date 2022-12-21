@@ -1,4 +1,4 @@
-%% LUR Simulation for varying the transmit power at the Base Station (Iridis Friendly).
+%% LUR Simulation for varying the transmit power at the BS with the same usergroups (Iridis Friendly).
 
 clc; clear; close all
 %rng(52); %Interesting rng for static scenario
@@ -24,13 +24,22 @@ settings = struct("P",P,"S",S,"nd",near_dist,"fd",far_dist,...
     "fb",1,"PDA",PDA_included,'xValue','power','bidMech',0);
 
 %% Parameters for simulations
-T_pwr = 15:25;
+T_pwr = 15:35;
 no = 10^(-114/10);
 e1 = (2.^SU_target)-1;
 xlen = length(T_pwr);
-pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target',SU_target,'xlen',xlen);
+
 %parpool('local');
 
+
+%% Pregenerate users
+all_PUs = cell(1,U); all_SUs = cell(1,U);
+for u = 1:U
+    [PU_set,SU_set] = user_gen(settings);
+    all_PUs{u} = PU_set; all_SUs{u} = SU_set;
+end
+pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target'...
+    ,SU_target,'allPUs',{all_PUs},'allSUs',{all_SUs});
 %% Output Variables
 if(settings.PDA)
     out_len = 14;
@@ -55,17 +64,19 @@ disp("LUR Simulation: " + int2str(P) + " PUs and " + int2str(S) + " SUs");
 disp("From " + int2str(T_pwr(1)) + "dB to " + int2str(T_pwr(end)) + "dB");
 
 %% Main loop
-outputs = LUR_newSim(settings,pmr);
-% for i = 1:xlen
-%     disp("Transmit Power: " + int2str(T_pwr(i)));
-%     outputs(i) = {LUR_simulate(i,settings,pmr)};
-% end
+%outputs = LUR_newSim(settings,pmr);
+for i = 1:xlen
+    tic;
+    disp("Transmit Power: " + int2str(T_pwr(i)));
+    outputs(i) = {LUR_sameusers(i,settings,pmr)};
+    toc;
+end
 disp("LUR Simulation Complete!");
 disp("Beginning saving and plotting...");
 
 %% Folder management and data saving
 
-folderName = "tpwr_"+s_dir + int2str(P) + "P" + int2str(S) + "S_";
+folderName = "sameUsrs_"+s_dir + int2str(P) + "P" + int2str(S) + "S_";
 
 mkdir("Results/"+folderName);
 
@@ -122,8 +133,6 @@ shapes = ['o','x','s','d','^','p','h','*'];
 %New Colour Scheme
 colours = ["#ff0000","#377eb8","#4daf4a","#984ea3","#ff7f00",...
     "#ffff33","#a65628","#f781bf","#999999"];
-labels = cell(P*2,1);
-%
 
 %All Primary Users' Spectral Efficiency
 % if(P<9) %Likely unreadable/useless after a certain number of PUs.
@@ -151,21 +160,18 @@ labels = cell(P*2,1);
 
 %Primary User Sum Spectral Efficiency
 figure; hold on;
-plot(T_pwr,PU_CDA_SUM,'Marker',shapes(1),'Color',colours(1)); 
-plot(T_pwr,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
-plot(T_pwr,PU_RNG_SUM,'Marker',shapes(2),'Color',"#000000"); 
-plot(T_pwr,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(8));
-plot(T_pwr,PU_DMA_SUM,'Marker',shapes(5),'Color',colours(4));
-if settings.PDA, plot(T_pwr,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)),
-    plot(T_pwr,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)),
-    %plot(T_pwr,PU_CA_SUM,'Marker',shapes(6),'Color',colours(7)), 
-end
-xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
+plot(xPlot,PU_CA_SUM,'Marker',shapes(6),'Color',colours(7)); 
+plot(xPlot,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3));
+plot(xPlot,PU_CDA_SUM,'Marker',shapes(1),'Color',colours(1)); 
+plot(xPlot,PU_DMA_SUM,'Marker',shapes(5),'Color',colours(4));
+plot(xPlot,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5));
+plot(xPlot,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
+plot(xPlot,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(8));
+plot(xPlot,PU_RNG_SUM,'Marker',shapes(2),'Color',"#000000"); 
+xlabel('Transmit SNR (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Primary Users');
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','Direct transmission'...
-    ,'DMA with CSI','PDA with CSI','PDA without CSI','location','northwest');
-h = get(gca,'Children');
-set(gca,'Children',[h(4),h(5),h(6),h(1),h(3),h(7),h(2)]);
+legend('CA','PDA with CSI','CDA with CSI','DMA with CSI','PDA without CSI',...
+    'CDA without CSI','Direct transmission','Random C-NOMA','location','northwest');
 ylim([0 inf]);
 saveas(gcf,strcat(PUSUM_name,'.png'));
 saveas(gcf,strcat(PUSUM_name,'.fig'));
@@ -191,21 +197,21 @@ saveas(gcf,strcat(PUSUM_name,'.fig'));
 %     ylim([0 inf]);
 %     saveas(gcf,SUSE_png);
 % end
-
+%% Te
 %Secondary User Sum Spectral Efficiency
 figure; hold on;
-plot(T_pwr,SU_CDA_SUM,'Marker',shapes(1),'Color',colours(1)); 
-plot(T_pwr,SU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
-plot(T_pwr,SU_RNG_SUM,'Marker',shapes(2),'Color',"#000000");
-plot(T_pwr,SU_DMA_SUM,'Marker',shapes(4),'Color',colours(4));
-if settings.PDA, plot(T_pwr,SU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)); 
-    plot(T_pwr,SU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)); end
-xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
+plot(xPlot,SU_PDA_SUM,'Marker',shapes(6),'Color',colours(7));
+plot(xPlot,SU_PDA_SUM,'Marker',shapes(3),'Color',colours(3));
+plot(xPlot,SU_CDA_SUM,'Marker',shapes(1),'Color',colours(1));
+plot(xPlot,SU_DMA_SUM,'Marker',shapes(4),'Color',colours(4));
+plot(xPlot,SU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5));
+plot(xPlot,SU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
+plot(xPlot,SU_RNG_SUM,'Marker',shapes(2),'Color',"#000000");
+xlabel('Transmit SNR (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Secondary Users');
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','DMA with CSI','PDA with CSI',...
-    'PDA without CSI','location','east');
-h = get(gca,'Children');
-set(gca,'Children',[h(4),h(5),h(1),h(3),h(6),h(2)]);
+legend('CA','PDA with CSI','CDA with CSI','DMA with CSI','PDA without CSI',...
+    'CDA without CSI','Random C-NOMA','location','east');
 ylim([0 inf]);
 saveas(gcf,strcat(SUSUM_name,'.png'));
 saveas(gcf,strcat(SUSUM_name,'.fig'));
+

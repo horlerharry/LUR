@@ -11,4 +11,6 @@ function [u1,u2] = C_NOMA(g1,g2,g3,b1,p)
     u1_x2 = log2(1+(p.pb*beta.*g1)./(p.pb*alpha.*g1+p.no));
     u2_r = log2(1+(p.pb.*g3./p.no));
     u2 = 0.5*min(u1_x2,u2_d+u2_r);
+
 end
+

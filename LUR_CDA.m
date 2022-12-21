@@ -34,7 +34,9 @@ function [PU_rate,SU_rate,pairings] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
                 if(SU_set(SU).Current_rate >= SU_set(SU).Maxrates(PU))
                     continue %Skip the game if its unwinnable for new choice
                 end
-                if(s.fb==1) %General case where FB is considered
+                if(s.bidMech==1)
+                    [winner,power.crate]=CDA_rateBid(PU_set(PU),PU_set(SU_set(SU).Pairing),SU_set(SU),s.p);
+                elseif(s.fb==1) %General case where FB is considered
                     [winner,power,crate]=CDA_FB(PU_set(SU_set(SU).Pairing),PU_set(PU),SU_set(SU),s,p);
                 else %Special case where FB is not considered (or not known!!)
                     [winner,power,crate]=CDA_noFB(PU_set(SU_set(SU).Pairing),PU_set(PU),SU_set(SU),s,p);
@@ -234,4 +236,68 @@ end
     winner = PU_players(PU_winner).Number;
     power = 1-max_bet(PU_winner);
 end
+
+function [winner,power,SU_rate] = CDA_rateBid(PU1,PU2,SU,s,p)
+%AUCTION Simulates an auction between two PUs for a given SU.
+%PU1 is the current pair of SU, PU2 is the challenger.
+%The game is defender sided due to stalemates falling to the way of the
+%first pick.
+PU_players = [PU1;PU2];
+PU_count = length(PU_players);
+bid_amt = SU.Current_rate; %Starting bid is whatever has been offered before
+SU_maxrate = [SU.Current_rate,0]; %SU maxrate, first user has already paired
+max_bet = [bid_amt,0];
+PU_minrate = [PU1.Current_rate,PU2.Current_rate]; %PU minrate, either the direct or another relay
+bid_step = 0.1;
+pairing = false;
+
+%Load comparisons
+for pu = 1:2
+    PU = PU_players(pu);
+    su_loc = find(PU.Pref_list==SU.Number);
+    if(su_loc<s.S) %There's another SU to choose from
+       if(PU.Pref_list(su_loc+1) ~= 0)
+        %Takes the max of either direct or alternative SU-PU pairings
+        PU_minrate(pu) = max(PU.Current_rate,PU.Maxrates(PU.Pref_list(su_loc+1)));
+       end
+    end
+end
+%Auction Game
+   while(pairing~=true)
+        for pu = 1:2
+            PU = PU_players(pu);
+            R1 = SU.Current_rate; R2 = PU.Maxrates(SU.Number);
+            %Increment SU Rate
+            bid_amt = bid_amt + bid_step;
+            %Find new beta.
+            new_e1 = 2^(bid_amt)-1;
+            temp_a2 = 1-((new_e1*p.no)./(p.pb.*cell2mat({SU.Channel(PU.Number^s.fb)}.')));
+            [R1,R2] = C_NOMA(SU.Channel(PU.Number^s.fb),PU.Channel,...   
+                PU.Relay_gains(SU.Number),temp_a2,p);
+            if(R2 > PU_minrate(pu) ) %PU throughtput
+                 if(R1>p.SU_target) %SU throughput
+                     SU_maxrate(pu) = R1;
+                    max_bet(pu) = temp_a2;
+                end
+            else
+                pairing=true;
+            end
+           if pairing, cc = " < "; end
+           disp("PU" + int2str(PU.Number) + " -> SU" + int2str(SU.Number)...
+               + "| " + num2str(R2,"%.3f") + cc + num2str(PU_minrate(pu),"%.3f")...
+               + " | " + num2str(R1,"%.3f") + ">" + num2str(p.SU_target) + " | "...
+               + num2str(temp_a2,"%.4f") + " |");
+           if(pairing==true)
+               break
+           end
+        end
+    
+   end
+       %Bias logic here!!!!!!
+    [SU_rate,PU_winner] = max(SU_maxrate);
+    winner = PU_players(PU_winner).Number;
+    power = 1-max_bet(PU_winner);
+    disp("Auction End");
+end
+
 

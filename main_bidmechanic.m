@@ -1,9 +1,9 @@
-%% LUR Simulation for varying the transmit power at the Base Station (Iridis Friendly).
+%% LUR Simulation for comparing the CDA Bidding Mechanics
 
 clc; clear; close all
 %rng(52); %Interesting rng for static scenario
 %% settings process
-filename = 'settings.txt';
+filename = 'settings_B.txt';
 fileID = fopen(filename);
 data = textscan(fileID,'%f  %*[^\n]');
 fclose(fileID);
@@ -21,19 +21,19 @@ rng_beta = data{1}(10); %Power allocated to RNG C-NOMA
 direct = data{1}(11); %Does the channel between BS and PU exist?
 settings = struct("P",P,"S",S,"nd",near_dist,"fd",far_dist,...
     "bid_step",bid_step,"N",N,"U",U,"beta",rng_beta,...
-    "fb",1,"PDA",PDA_included,'xValue','power','bidMech',0);
+    "fb",1,"PDA",PDA_included,'xValue','power');
 
 %% Parameters for simulations
 T_pwr = 15:25;
 no = 10^(-114/10);
 e1 = (2.^SU_target)-1;
-xlen = length(T_pwr);
-pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target',SU_target,'xlen',xlen);
+pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target',SU_target);
 %parpool('local');
 
 %% Output Variables
+xlen = length(T_pwr);
 if(settings.PDA)
-    out_len = 14;
+    out_len = 12;
     games = "CDA&PDA_";
 else
     out_len = 7;
@@ -55,11 +55,10 @@ disp("LUR Simulation: " + int2str(P) + " PUs and " + int2str(S) + " SUs");
 disp("From " + int2str(T_pwr(1)) + "dB to " + int2str(T_pwr(end)) + "dB");
 
 %% Main loop
-outputs = LUR_newSim(settings,pmr);
-% for i = 1:xlen
-%     disp("Transmit Power: " + int2str(T_pwr(i)));
-%     outputs(i) = {LUR_simulate(i,settings,pmr)};
-% end
+for i = 1:xlen
+    disp("Transmit Power: " + int2str(T_pwr(i)));
+    outputs(i) = {LUR_simulate(i,settings,pmr)};
+end
 disp("LUR Simulation Complete!");
 disp("Beginning saving and plotting...");
 
@@ -86,8 +85,7 @@ SU_CDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(4),outputs)),[settings.S,xlen]);
 PU_RNG_SE = reshape(cell2mat(cellfun(@(x) x(5),outputs)),[settings.P,xlen]);
 SU_RNG_SE = reshape(cell2mat(cellfun(@(x) x(6),outputs)),[settings.S,xlen]);
 PU_NONOMA_SE = reshape(cell2mat(cellfun(@(x) x(7),outputs)),[settings.P,xlen]);
-PU_DMA_SE = reshape(cell2mat(cellfun(@(x) x(13),outputs)),[settings.P,xlen]);
-SU_DMA_SE = reshape(cell2mat(cellfun(@(x) x(14),outputs)),[settings.S,xlen]);
+
 if(settings.PDA)
     PU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(8),outputs)),[settings.P,xlen]); 
     SU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(9),outputs)),[settings.S,xlen]);
@@ -108,8 +106,6 @@ PU_NOCOOP_SUM = sum(PU_NONOMA_SE);
 SU_CDA_SUM = sum(SU_CDA_SE);
 SU_CDA_AVG_SUM = sum(SU_CDA_AVG_SE);
 SU_RNG_SUM = sum(SU_RNG_SE);
-PU_DMA_SUM = sum(PU_DMA_SE);
-SU_DMA_SUM = sum(SU_DMA_SE);
 
 
 %% PlottingxPlot
@@ -155,17 +151,16 @@ plot(T_pwr,PU_CDA_SUM,'Marker',shapes(1),'Color',colours(1));
 plot(T_pwr,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
 plot(T_pwr,PU_RNG_SUM,'Marker',shapes(2),'Color',"#000000"); 
 plot(T_pwr,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(8));
-plot(T_pwr,PU_DMA_SUM,'Marker',shapes(5),'Color',colours(4));
 if settings.PDA, plot(T_pwr,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)),
     plot(T_pwr,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)),
     %plot(T_pwr,PU_CA_SUM,'Marker',shapes(6),'Color',colours(7)), 
 end
 xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Primary Users');
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','Direct transmission'...
-    ,'DMA with CSI','PDA with CSI','PDA without CSI','location','northwest');
+legend('CDA with CSI','CDA without CSI','Random C-NOMA','Direct transmission','PDA with CSI','PDA without CSI',...
+    'location','best');
 h = get(gca,'Children');
-set(gca,'Children',[h(4),h(5),h(6),h(1),h(3),h(7),h(2)]);
+set(gca,'Children',[h(4),h(3),h(5),h(1),h(6),h(2)]);
 ylim([0 inf]);
 saveas(gcf,strcat(PUSUM_name,'.png'));
 saveas(gcf,strcat(PUSUM_name,'.fig'));
@@ -197,15 +192,14 @@ figure; hold on;
 plot(T_pwr,SU_CDA_SUM,'Marker',shapes(1),'Color',colours(1)); 
 plot(T_pwr,SU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
 plot(T_pwr,SU_RNG_SUM,'Marker',shapes(2),'Color',"#000000");
-plot(T_pwr,SU_DMA_SUM,'Marker',shapes(4),'Color',colours(4));
 if settings.PDA, plot(T_pwr,SU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)); 
     plot(T_pwr,SU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)); end
 xlabel('Transmit Power (dB)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
 title('Sum Spectral Efficiency of all Secondary Users');
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','DMA with CSI','PDA with CSI',...
-    'PDA without CSI','location','east');
+legend('CDA with CSI','CDA without CSI','Random C-NOMA','PDA with CSI','PDA without CSI',...
+    'location','best');
 h = get(gca,'Children');
-set(gca,'Children',[h(4),h(5),h(1),h(3),h(6),h(2)]);
+set(gca,'Children',[h(3),h(4),h(1),h(5),h(2)]);
 ylim([0 inf]);
 saveas(gcf,strcat(SUSUM_name,'.png'));
 saveas(gcf,strcat(SUSUM_name,'.fig'));

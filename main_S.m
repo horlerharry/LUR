@@ -23,21 +23,30 @@ rng_beta = data{1}(12); %Power allocated to RNG C-NOMA
 direct = data{1}(13); %Channel from BS to PU, 0 for none, 1 for weak, 2 for strong
 settings = struct("P",P,"S",S,"nd",near_dist,"fd",far_dist,...
     "bid_step",bid_step,"N",N,"U",U,"beta",rng_beta,...
-    "fb",1,"PDA",PDA_included,'xValue','maxS');
+    "fb",1,"PDA",PDA_included,'xValue','maxS','bidMech',0);
 
 %% Parameters for simulations
 T_pwr = 20; %Transmit Power (in dB)
 no = 10^(-114/10); %Noise Power
 pb = 10^(T_pwr/10); %Transmit Power
 e1 = (2.^SU_target)-1; %Inverse maths for needed rate for SUs
-pmr = struct("T_pwr",T_pwr,"pb",pb,"no",no,"e1",e1,"dr",direct,'SU_target',SU_target,'S_values',S:gapS:maxS);
 %parpool('local');
+%% User Generation, generate all users.
+settings.S = maxS;
+all_PUs = cell(1,U); all_SUs = cell(1,U);
+for u = 1:U
+    [PU_set,SU_set] = user_gen(settings);
+    all_PUs{u} = PU_set; all_SUs{u} = SU_set;
+end
+settings.S = S;
+pmr = struct("T_pwr",T_pwr,"pb",pb,"no",no,"e1",e1,"dr",direct,'SU_target'...
+    ,SU_target,'S_values',S:gapS:maxS,'allPUs',{all_PUs},'allSUs',{all_SUs});
 
 %% Output Variables
 xPlot = S:gapS:maxS;
 xlen = length(xPlot);
 if(settings.PDA)
-    out_len = 11;
+    out_len = 14;
     games = "CDA_";
 else
     out_len = 7;
@@ -59,8 +68,10 @@ disp("From " + int2str(S) + " to " + int2str(maxS) + " SUs" );
 
 %% Main loop
 for i = 1:xlen
+    tic
     disp("Number of SUs: " + int2str(xPlot(i)));
-    outputs(i) = {LUR_simulate(i,settings,pmr)};
+    outputs(i) = {LUR_sameusers(i,settings,pmr)};
+    toc
 end
 
 disp("LUR Simulation Complete!");
@@ -70,9 +81,9 @@ disp("Beginning saving and plotting...");
 folderName = "varyingS_" + int2str(S) + "to" + int2str(maxS) + "_" + s_dir + int2str(P) + "P";
 mkdir("Results/"+folderName);
 
-save_name = "LUR_" + s_dir + games + int2str(P) +...
+save_name = "PDAvDMA_" + s_dir + games + int2str(P) +...
     "P_" + int2str(S) + "S_to_"+ int2str(maxS) + "S.mat";
-matfile = fullfile("Results",folderName,save_name);
+%matfile = fullfile("Results",folderName,save_name);
 %PUSE_png = fullfile("Results",folderName,games + "PU_SE.png");
 %PUMEAN_png = fullfile("Results",folderName,games + "PU_MEAN_SE.png");
 %SUSE_png = fullfile(folderName,games + "SU_SE.png");
@@ -80,17 +91,17 @@ SUMEAN_name = fullfile("Results",folderName,games + "SU_MEAN_SE");
 PUSUM_name = fullfile("Results",folderName,games + "PU_SUM_SE");
 %SUSUM_png = fullfile("Results",folderName,games + "SU_SUM_SE.png");
 
-save(matfile,'outputs',"settings","pmr",'-v7.3');
+%save(matfile,'outputs',"settings","pmr",'-v7.3');
 
 %% Output manipulation
-PU_CDA_SE = reshape(cell2mat(cellfun(@(x) x(1),outputs)),[P,xlen]);
-PU_CDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(3),outputs)),[P,xlen]);
-PU_RNG_SE = reshape(cell2mat(cellfun(@(x) x(5),outputs)),[P,xlen]);
-PU_NONOMA_SE = reshape(cell2mat(cellfun(@(x) x(7),outputs)),[P,xlen]);
-
+PU_CDA_SE = reshape(cell2mat(cellfun(@(x) x(1),outputs)),[settings.P,xlen]);
+PU_CDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(3),outputs)),[settings.P,xlen]);
+PU_RNG_SE = reshape(cell2mat(cellfun(@(x) x(5),outputs)),[settings.P,xlen]);
+PU_NONOMA_SE = reshape(cell2mat(cellfun(@(x) x(7),outputs)),[settings.P,xlen]);
+PU_DMA_SE = reshape(cell2mat(cellfun(@(x) x(13),outputs)), [settings.P,xlen]);
 if(settings.PDA)
-    PU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(8),outputs)),[P,xlen]); 
-    PU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(10),outputs)), [P,xlen]);
+    PU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(8),outputs)),[settings.P,xlen]); 
+    PU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(10),outputs)), [settings.P,xlen]);
     games = "CDA&PDA_";
 end
 
@@ -102,12 +113,13 @@ PU_RNG_MEAN = mean(PU_RNG_SE);
 PU_PDA_MEAN = mean(PU_PDA_SE);
 PU_PDA_AVG_MEAN = mean(PU_PDA_AVG_SE);
 PU_NOCOOP_MEAN = mean(PU_NONOMA_SE);
+PU_DMA_MEAN = mean(PU_DMA_SE);
 SU_CDA_MEAN = cellfun(@mean,cellfun(@(x) x(2),outputs));
 SU_CDA_AVG_MEAN = cellfun(@mean,cellfun(@(x) x(4),outputs));
 SU_RNG_MEAN = cellfun(@mean,cellfun(@(x) x(6),outputs));
 SU_PDA_MEAN = cellfun(@mean,cellfun(@(x) x(9),outputs));
 SU_PDA_AVG_MEAN = cellfun(@mean,cellfun(@(x) x(11),outputs));
-
+SU_DMA_MEAN = cellfun(@mean, cellfun(@(x) x(14),outputs));
 %Sum of each xValue
 PU_CDA_SUM = sum(PU_CDA_SE);
 PU_CDA_AVG_SUM = sum(PU_CDA_AVG_SE);
@@ -115,12 +127,14 @@ PU_RNG_SUM = sum(PU_RNG_SE);
 PU_NOCOOP_SUM = sum(PU_NONOMA_SE);
 PU_PDA_SUM = sum(PU_PDA_SE);
 PU_PDA_AVG_SUM = sum(PU_PDA_AVG_SE);
+PU_DMA_SUM = sum(PU_DMA_SE);
+PU_CA_SUM = cell2mat(cellfun(@(x) x(12), outputs));
 SU_CDA_SUM = cellfun(@sum,cellfun(@(x) x(2),outputs));
 SU_CDA_AVG_SUM = cellfun(@sum,cellfun(@(x) x(4),outputs));
 SU_RNG_SUM = cellfun(@sum,cellfun(@(x) x(6),outputs));
 SU_PDA_SUM = cellfun(@sum,cellfun(@(x) x(9),outputs));
 SU_PDA_AVG_SUM = cellfun(@sum,cellfun(@(x) x(11),outputs));
-
+SU_DMA_SUM = cellfun(@sum,cellfun(@(x) x(14),outputs));
 
 %% Plotting
 shapes = ['o','x','s','d','^','p','h','*'];
@@ -163,34 +177,42 @@ colours = ["#ff0000","#377eb8","#4daf4a","#984ea3","#ff7f00",...
 % set(gca,'Children',[h(4),h(3),h(5),h(1),h(6),h(2)]);
 % saveas(gcf,PUMEAN_png);
 
-%Secondary User Average Spectral Efficiency
+%Secondary User Sum Spectral Efficiency
 figure; hold on;
-plot(xPlot,SU_CDA_MEAN,'Marker',shapes(1),'Color',colours(1)); 
-plot(xPlot,SU_CDA_AVG_MEAN,'--','Marker',shapes(1),'Color',colours(2));
-plot(xPlot,SU_RNG_MEAN,'Marker',shapes(2),'Color',"#000000");
-if settings.PDA, plot(xPlot,SU_PDA_MEAN,'Marker',shapes(3),'Color',colours(3)); 
-    plot(xPlot,SU_PDA_AVG_MEAN,'--','Marker',shapes(3),'Color',colours(5)); end
-xlabel('Number of SUs (S)');ylabel('Average Spectral Efficiency (bits/s/Hz)');
-title('Average Spectral Efficiency of all Secondary Users'); ylim([0 inf]);
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','PDA with CSI','PDA without CSI',...
-    'location','best');
-h = get(gca,'Children');
-set(gca,'Children',[h(3),h(4),h(1),h(5),h(2)]);
-saveas(gcf,strcat(SUMEAN_name,'.png'));
-saveas(gcf,strcat(SUMEAN_name,'.fig'));
-%Primary User Sum Spectral Effieicency
-figure; hold on;
-plot(xPlot,PU_CDA_SUM,'Marker',shapes(1),'Color',colours(1));
-plot(xPlot,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
-plot(xPlot,PU_RNG_SUM,'Marker',shapes(2),'Color',"#000000");
-plot(xPlot,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(8));
-if settings.PDA, plot(xPlot,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3)), 
-    plot(xPlot,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5)), end
+plot(xPlot,SU_PDA_SUM,'Marker',shapes(6),'Color',colours(7));
+plot(xPlot,SU_PDA_SUM,'Marker',shapes(3),'Color',colours(3));
+plot(xPlot,SU_CDA_SUM,'Marker',shapes(1),'Color',colours(1));
+plot(xPlot,SU_DMA_SUM,'Marker',shapes(4),'Color',colours(4));
+plot(xPlot,SU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5));
+plot(xPlot,SU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
+plot(xPlot,SU_RNG_SUM,'Marker',shapes(2),'Color',"#000000");
 xlabel('Number of SUs (S)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
-title('Sum Spectral Efficiency of all Primary Users'); ylim([0 inf]);
-legend('CDA with CSI','CDA without CSI','Random C-NOMA','Direct transmission','PDA with CSI','PDA without CSI',...
-    'location','best');
-h = get(gca,'Children'); 
-set(gca,'Children',[h(4),h(3),h(5),h(1),h(6),h(2)]);
+title('Sum Spectral Efficiency of all Secondary Users');
+legend('CA','PDA with CSI','CDA with CSI','DMA with CSI','PDA without CSI',...
+    'CDA without CSI','Random C-NOMA','location','east');
+ylim([0 inf]);
+%saveas(gcf,strcat(SUSUM_name,'.png'));
+%saveas(gcf,strcat(SUSUM_name,'.fig'));
+
+
+
+
+%Primary User Sum Spectral Efficiency
+figure; hold on;
+plot(xPlot,PU_CA_SUM,'Marker',shapes(6),'Color',colours(7)); 
+plot(xPlot,PU_PDA_SUM,'Marker',shapes(3),'Color',colours(3));
+plot(xPlot,PU_CDA_SUM,'Marker',shapes(1),'Color',colours(1))    ; 
+plot(xPlot,PU_DMA_SUM,'Marker',shapes(5),'Color',colours(4));
+plot(xPlot,PU_PDA_AVG_SUM,'--','Marker',shapes(3),'Color',colours(5));
+plot(xPlot,PU_CDA_AVG_SUM,'--','Marker',shapes(1),'Color',colours(2));
+plot(xPlot,PU_NOCOOP_SUM,'Marker',shapes(4),'Color',colours(8));
+plot(xPlot,PU_RNG_SUM,'Marker',shapes(2),'Color',"#000000"); 
+xlabel('Number of SUs (S)');ylabel('Sum Spectral Efficiency (bits/s/Hz)');
+title('Sum Spectral Efficiency of all Primary Users');
+legend('CA','PDA with CSI','CDA with CSI','DMA with CSI','PDA without CSI',...
+    'CDA without CSI','Direct transmission','Random C-NOMA','location','south','NumColumns',2);
+%h = get(gca,'Children');
+%set(gca,'Children',[h(4),h(5),h(6),h(1),h(3),h(7),h(2)]);
+ylim([0 inf]);
 saveas(gcf,strcat(PUSUM_name,'.png'));
 saveas(gcf,strcat(PUSUM_name,'.fig'));
