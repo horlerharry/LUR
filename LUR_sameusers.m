@@ -59,14 +59,15 @@ function outputs = LUR_sameusers(tb,s,p)
             %LUR preprocessing for game operation
             [PU_set,SU_set,PU_coop,SU_coop] = LUR_preprocess(PU_set,SU_set,s,p);
             
-            %[CDA_PUrate,CDA_SUrate,~] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
-            %PU_CDA_SE = PU_CDA_SE + CDA_PUrate;
-            %SU_CDA_SE = SU_CDA_SE + CDA_SUrate;
+            [CDA_PUrate,CDA_SUrate,~] = LUR_CDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
+            PU_CDA_SE = PU_CDA_SE + CDA_PUrate;
+            SU_CDA_SE = SU_CDA_SE + CDA_SUrate;
             if(s.PDA)
-                [PDA_PUrate,PDA_SUrate,~,PU_CArate] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
+                [PDA_PUrate,PDA_SUrate,~,PU_CArate,SU_CArate] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p);
                 PU_PDA_SE = PU_PDA_SE + PDA_PUrate;
                 SU_PDA_SE = SU_PDA_SE + PDA_SUrate;
                 PU_CA_SE = PU_CA_SE + PU_CArate;
+                SU_CA_SE = SU_CA_SE + SU_CArate;
             end
             [DMA_PUrate,DMA_SUrate,~] = LUR_DMA(PU_set,SU_set,PU_coop,SU_coop,s,p);
             PU_DMA_SE = PU_DMA_SE + DMA_PUrate;
@@ -186,8 +187,8 @@ function outputs = LUR_sameusers(tb,s,p)
     end
     outputs{13} = PU_DMA_SE/N;
     outputs{14} = SU_DMA_SE/N;
-    outputs{15} = PU_DMA_AVG_SE/N;
-    outputs{16} = PU_DMA_AVG_SE/N;
+    outputs{15} = SU_CA_SE/N;
+    %outputs{16} = PU_DMA_AVG_SE/N;
 
     %Final manipulation
     outputs = cellfun(@(x) x./U, outputs,'UniformOutput',0);

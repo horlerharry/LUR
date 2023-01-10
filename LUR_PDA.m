@@ -1,4 +1,4 @@
-function [PU_rate,SU_rate,pairings,PU_max_sum] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
+function [PU_rate,SU_rate,pairings,PU_CArate,SU_CArate] = LUR_PDA(PU_set,SU_set,PU_coop,SU_coop,s,p)
 %Simulates PDA for all cooperating users in the network.
 
 %% Output variables
@@ -49,8 +49,8 @@ for r = 1:rounds
     end
          
         %% Run Performance for round
-%     PU_round = zeros(P,1);
-%     SU_round = zeros(S,1);
+     PU_curr_r = zeros(P,1);
+     SU_curr_r = zeros(S,1);
    PU_sum = 0;
    for pu = 1:P
         PU = PU_set(pu);
@@ -62,12 +62,16 @@ for r = 1:rounds
                 PU.Relay_gains(PU.Pairing),PU.Power,p);
             pairings(pu,r) = PU.Pairing;
             SU_rate(SU.Number) = SU_rate(SU.Number) + SU_round;
+            SU_curr_r(SU.Number) = SU_round;
         end
         PU_rate(pu) = PU_rate(pu) + PU_round;
+        PU_curr_r(pu) = PU_round;
         PU_sum = PU_sum + PU_round;
    end
    if(PU_sum > PU_max_sum)
        PU_max_sum = PU_sum;
+       PU_CArate = PU_curr_r;
+       SU_CArate = SU_curr_r;
    end
 
         %Update order of PUs for PDA fairness

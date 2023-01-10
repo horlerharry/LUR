@@ -42,7 +42,7 @@ pmr = struct("T_pwr",T_pwr,"pb",0,"no",no,"e1",e1,"dr",direct,'SU_target'...
     ,SU_target,'allPUs',{all_PUs},'allSUs',{all_SUs});
 %% Output Variables
 if(settings.PDA)
-    out_len = 14;
+    out_len = 15;
     games = "CDA&PDA_";
 else
     out_len = 7;
@@ -104,8 +104,8 @@ if(settings.PDA)
     SU_PDA_SE = reshape(cell2mat(cellfun(@(x) x(9),outputs)),[settings.S,xlen]);
     PU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(10),outputs)),[settings.P,xlen]);
     SU_PDA_AVG_SE = reshape(cell2mat(cellfun(@(x) x(11),outputs)), [settings.S,xlen]);
-    PU_CA_SUM = cell2mat(cellfun(@(x) x(12), outputs));
-
+    PU_CA_SE = reshape(cell2mat(cellfun(@(x) x(12), outputs)),[settings.P,xlen]);
+    SU_CA_SE = reshape(cell2mat(cellfun(@(x) x(15),outputs)), [settings.S,xlen]);
 end
 %% Summing data
 PU_PDA_SUM = sum(PU_PDA_SE);
